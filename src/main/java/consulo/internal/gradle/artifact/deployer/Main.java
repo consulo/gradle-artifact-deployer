@@ -45,7 +45,7 @@ public class Main
 
 		Path extractDirectory = target.resolve("extract");
 
-		//cleanAndDownloadGradle(target, extractDirectory);
+		cleanAndDownloadGradle(target, extractDirectory);
 
 		Path gradleDirectory = Files.walk(extractDirectory).filter(path -> !path.equals(extractDirectory)).findAny().get();
 
