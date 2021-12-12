@@ -1,5 +1,8 @@
 package consulo.internal.gradle.artifact.deployer;
 
+import com.google.common.io.MoreFiles;
+import com.google.common.io.RecursiveDeleteOption;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -16,9 +19,6 @@ import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
-
-import com.google.common.io.MoreFiles;
-import com.google.common.io.RecursiveDeleteOption;
 
 public class Main
 {
@@ -169,8 +169,8 @@ public class Main
 
 	private static void cleanAndDownloadGradle(Path target, Path extractDirectory) throws Exception
 	{
-		String url = "https://downloads.gradle.org/distributions/gradle-4.10-all.zip";
-		//String url = "https://downloads.gradle.org/distributions/gradle-4.10-bin.zip";
+		String url = "https://downloads.gradle-dn.com/distributions/gradle-7.1-all.zip";
+		//String url = "https://downloads.gradle.org/distributions/gradle-7.1-bin.zip";
 
 		System.out.println("Preparing build directory");
 
