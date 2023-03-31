@@ -16,24 +16,18 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Predicate;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-public class Main
+/**
+ * @author VISTALL
+ * @since 31/03/2023
+ */
+public class Deployer
 {
-	static class MavenArtifact
-	{
-		Path jar;
-		Path sourcesJar;
-
-		MavenArtifact(Path jar)
-		{
-			this.jar = jar;
-		}
-	}
-
-	public static void main(String[] args) throws Exception
+	public void run(String args[]) throws Exception
 	{
 		String mavenHome = System.getenv("MAVEN_HOME");
 		if(mavenHome == null)
@@ -84,32 +78,12 @@ public class Main
 
 					Files.deleteIfExists(sourceJar); // just while tests
 
-					try (ZipOutputStream zipOutputStream = new ZipOutputStream(Files.newOutputStream(sourceJar), StandardCharsets.UTF_8))
-					{
-						Files.walk(srcJarDistribution).forEach(maybeJavaFile ->
-						{
-							if(Files.isDirectory(maybeJavaFile))
-							{
-								return;
-							}
-
-							Path temp = srcJarDistribution.relativize(maybeJavaFile);
-
-							String entryName = temp.toString().replace("\\", "/");
-
-							try (InputStream fileStream = Files.newInputStream(maybeJavaFile))
-							{
-								addToZipFile(entryName, fileStream, zipOutputStream);
-							}
-							catch(IOException e)
-							{
-								e.printStackTrace();
-							}
-						});
-					}
+					zipDirectory(sourceJar, srcJarDistribution);
 				}
 			}
 		}
+
+		postProcess(target, jarLibsForDeploy, version);
 
 		for(MavenArtifact mavenArtifact : jarLibsForDeploy)
 		{
@@ -121,7 +95,7 @@ public class Main
 
 		boolean isWindows = System.getProperty("os.name").toLowerCase(Locale.US).contains("windows");
 
-		System.out.println("Deploying arifacts");
+		System.out.println("Deploying artifacts");
 		for(MavenArtifact mavenArtifact : jarLibsForDeploy)
 		{
 			String artifactId = mavenArtifact.jar.getFileName().toString().replace("-" + version + ".jar", "");
@@ -148,7 +122,11 @@ public class Main
 		}
 	}
 
-	private static String runAtMaven(String artifactId, String version, String packaging, Path filePath, Path sourceFilePath)
+	protected void postProcess(Path target, List<MavenArtifact> jarLibsForDeploy, String version) throws Exception
+	{
+	}
+
+	protected static String runAtMaven(String artifactId, String version, String packaging, Path filePath, Path sourceFilePath)
 	{
 		StringBuilder builder = new StringBuilder();
 		builder.append("deploy:deploy-file");
@@ -167,7 +145,7 @@ public class Main
 		return builder.toString();
 	}
 
-	private static void cleanAndDownloadGradle(Path target, Path extractDirectory) throws Exception
+	protected static void cleanAndDownloadGradle(Path target, Path extractDirectory) throws Exception
 	{
 		String url = "https://downloads.gradle-dn.com/distributions/gradle-7.1-all.zip";
 		//String url = "https://downloads.gradle.org/distributions/gradle-7.1-bin.zip";
@@ -181,7 +159,7 @@ public class Main
 
 		Files.createDirectory(target);
 
-		Path zipDistribution = target.resolve("gradle-distribuition.zip");
+		Path zipDistribution = target.resolve("gradle-distribution.zip");
 
 		try (InputStream stream = new URL(url).openStream())
 		{
@@ -194,7 +172,34 @@ public class Main
 
 		System.out.println("Extracting distribution");
 
-		unzip(zipDistribution, extractDirectory);
+		unzip(zipDistribution, extractDirectory, (name) -> name.contains("examples"));
+	}
+
+	protected static void zipDirectory(Path jarPath, Path jarSource) throws IOException
+	{
+		try (ZipOutputStream zipOutputStream = new ZipOutputStream(Files.newOutputStream(jarPath), StandardCharsets.UTF_8))
+		{
+			Files.walk(jarSource).forEach(maybeJavaFile ->
+			{
+				if(Files.isDirectory(maybeJavaFile))
+				{
+					return;
+				}
+
+				Path temp = jarSource.relativize(maybeJavaFile);
+
+				String entryName = temp.toString().replace("\\", "/");
+
+				try (InputStream fileStream = Files.newInputStream(maybeJavaFile))
+				{
+					addToZipFile(entryName, fileStream, zipOutputStream);
+				}
+				catch(IOException e)
+				{
+					throw new RuntimeException(e);
+				}
+			});
+		}
 	}
 
 	public static void addToZipFile(String entryName, InputStream stream, ZipOutputStream zos) throws IOException
@@ -212,7 +217,7 @@ public class Main
 		zos.closeEntry();
 	}
 
-	public static void unzip(Path zipFilePath, Path extractTo) throws IOException
+	public static void unzip(Path zipFilePath, Path extractTo, Predicate<String> fileAccepter) throws IOException
 	{
 		try (ZipInputStream zipIn = new ZipInputStream(Files.newInputStream(zipFilePath)))
 		{
@@ -220,7 +225,7 @@ public class Main
 			while(entry != null)
 			{
 				String name = entry.getName();
-				if(name.contains("examples"))
+				if(fileAccepter.test(name))
 				{
 					zipIn.closeEntry();
 					entry = zipIn.getNextEntry();
@@ -232,7 +237,7 @@ public class Main
 				{
 					extractFile(zipIn, filePath);
 				}
-				else
+				else if(!Files.exists(filePath))
 				{
 					Files.createDirectory(filePath);
 				}
@@ -244,6 +249,8 @@ public class Main
 
 	private static void extractFile(ZipInputStream zipIn, Path filePath) throws IOException
 	{
+		Files.createDirectories(filePath.getParent());
+
 		try (BufferedOutputStream bos = new BufferedOutputStream(Files.newOutputStream(filePath)))
 		{
 			byte[] bytesIn = new byte[1024];
