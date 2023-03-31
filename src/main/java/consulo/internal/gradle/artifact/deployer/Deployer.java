@@ -147,9 +147,6 @@ public class Deployer
 
 	protected static void cleanAndDownloadGradle(Path target, Path extractDirectory) throws Exception
 	{
-		String url = "https://downloads.gradle-dn.com/distributions/gradle-7.1-all.zip";
-		//String url = "https://downloads.gradle.org/distributions/gradle-7.1-bin.zip";
-
 		System.out.println("Preparing build directory");
 
 		if(Files.exists(target))
@@ -161,7 +158,7 @@ public class Deployer
 
 		Path zipDistribution = target.resolve("gradle-distribution.zip");
 
-		try (InputStream stream = new URL(url).openStream())
+		try (InputStream stream = new URL(Gradle.URL).openStream())
 		{
 			System.out.println("Downloading gradle distribution. Target: " + target.toFile().getCanonicalPath());
 
