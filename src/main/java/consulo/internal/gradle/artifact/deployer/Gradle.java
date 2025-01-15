@@ -6,6 +6,6 @@ package consulo.internal.gradle.artifact.deployer;
  */
 public class Gradle
 {
-	public static final String URL = "https://downloads.gradle-dn.com/distributions/gradle-7.6.1-all.zip";
+	public static final String URL = "https://downloads.gradle.org/distributions/gradle-8.12-all.zip";
 	//public static final String url = "https://downloads.gradle.org/distributions/gradle-7.1-bin.zip";
 }
